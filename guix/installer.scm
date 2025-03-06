@@ -42,6 +42,13 @@
   #:use-module (gnu system install)
   #:use-module (nongnu packages linux)
   #:use-module (nongnu system linux-initrd)
+
+  #:use-module (antlers records)
+  #:use-module (antlers systems transformations oot-modules)
+  #:use-module (guix gexp)
+  #:use-module (guix packages)
+  #:use-module (guix records)
+
   #:export (installation-os-nonfree))
 
 (use-service-modules linux networking desktop sddm xorg ssh)
@@ -76,18 +83,22 @@
 ;;; - https://www.illucid.net/static/unpublished/erasing-darlings-on-guix
 (define my-linux linux-6.12)
 
-(define my-zfs
-  (package
-    (inherit zfs)
-    (arguments
-      (cons* #:linux my-linux
-             (package-arguments zfs)))))
+(define my-zfs (linux-modules-with-kernel my-linux zfs)
+  ;; (package
+  ;;   (inherit zfs)
+  ;;   (arguments
+  ;;     (cons* #:linux my-linux
+  ;;            (package-arguments zfs))))
+  )
 
-(define my-linux-with-zfs
-  (package
-   (inherit my-linux)
-   ;; add my-zfs to build outputs
-   ))
+(define my-linux-with-zfs (kernel-with-oot-modules <> `(,#~#$zfs:module))
+  ;; (package
+  ;;  (inherit my-linux)
+  ;;  ;; add my-zfs to build outputs
+  ;;  )
+
+  )
+
 (define zfs-shepherd-services
   (let ((zpool            (file-append my-zfs "/sbin/zpool"))
         (zfs              (file-append my-zfs "/sbin/zfs"))
@@ -210,7 +221,7 @@
     ;;; must be included for legacy mounts
     ;; (initrd %initrd)
     ;; The rest of the neccessary ZFS bits and bobs *are* included.
-    ;; (initrd-modules (cons "zfs" %base-initrd-modules))
+    (initrd-modules (cons "zfs" %base-initrd-modules))
 
     (services
      (cons*
