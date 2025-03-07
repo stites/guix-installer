@@ -1,2 +1,3 @@
 *.iso
 ./guix/channels.scm
+*.bk

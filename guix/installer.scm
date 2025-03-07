@@ -20,7 +20,7 @@
 ;; Generate a bootable image (e.g. for USB sticks, etc.) with:
 ;; $ guix system image -t iso9660 installer.scm
 
-(define-module (nongnu system install)
+(define-module (guix installer)
   #:use-module (guix)
   #:use-module (guix channels)
   #:use-module (guix utils)
@@ -45,6 +45,7 @@
 
   #:use-module (antlers records)
   #:use-module (antlers systems transformations oot-modules)
+
   #:use-module (guix gexp)
   #:use-module (guix packages)
   #:use-module (guix records)
@@ -81,17 +82,20 @@
 ;;; References:
 ;;; - https://github.com/openzfs/zfs/discussions/11453
 ;;; - https://www.illucid.net/static/unpublished/erasing-darlings-on-guix
-(define my-linux linux-6.12)
+(define my-linux linux-6.6)
 
-(define my-zfs (linux-modules-with-kernel my-linux zfs)
-  ;; (package
-  ;;   (inherit zfs)
-  ;;   (arguments
-  ;;     (cons* #:linux my-linux
-  ;;            (package-arguments zfs))))
+(define my-zfs
+  (linux-module-with-kernel
+   my-linux
+   (package
+    (inherit zfs)
+    (arguments
+      (cons* #:linux my-linux           ; must be pinned! otherwise base zfs defaults to linux-6.13
+             (package-arguments zfs)))))
+
   )
 
-(define my-linux-with-zfs (kernel-with-oot-modules <> `(,#~#$zfs:module))
+(define my-linux-with-zfs (kernel-with-oot-modules my-linux `(,#~#$my-zfs:module))
   ;; (package
   ;;  (inherit my-linux)
   ;;  ;; add my-zfs to build outputs
@@ -208,7 +212,7 @@
 (define installation-os-nonfree
   (operating-system
     (inherit installation-os)
-    (kernel my-linux)
+    (kernel my-linux-with-zfs)
     ;; Add the 'net.ifnames' argument to prevent network interfaces
     ;; from having really long names.  This can cause an issue with
     ;; wpa_supplicant when you try to connect to a wifi network.
