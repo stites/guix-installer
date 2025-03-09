@@ -19,6 +19,8 @@
 
 ;; Generate a bootable image (e.g. for USB sticks, etc.) with:
 ;; $ guix system image -t iso9660 installer.scm
+;;
+;; for installation, see: https://wiki.systemcrafters.net/guix/nonguix-installation-guide/
 
 (define-module (guix installer)
   #:use-module (guix)
@@ -82,7 +84,7 @@
 ;;; References:
 ;;; - https://github.com/openzfs/zfs/discussions/11453
 ;;; - https://www.illucid.net/static/unpublished/erasing-darlings-on-guix
-(define my-linux linux-6.6)
+(define my-linux linux-6.12)
 
 (define my-zfs
   (linux-module-with-kernel
@@ -220,11 +222,12 @@
     ;; For broadcom, blacklist conflicting kernel modules.
     (kernel-arguments '("modprobe.blacklist=b43,b43legacy,ssb,bcm43xx,brcm80211,brcmfmac,brcmsmac,bcma,radeon" "net.ifnames=0"))
     (kernel-loadable-modules (list broadcom-sta (list my-zfs "module")))
-    (firmware (cons* broadcom-bt-firmware %base-firmware))
+    (firmware (cons* iwlwifi-firmware broadcom-bt-firmware linux-firmware %base-firmware))
 
     ;;; must be included for legacy mounts
     ;; (initrd %initrd)
     ;; The rest of the neccessary ZFS bits and bobs *are* included.
+    (initrd microcode-initrd)
     (initrd-modules (cons "zfs" %base-initrd-modules))
 
     (services
@@ -238,10 +241,7 @@
       (service gnome-desktop-service-type)
       ;; To configure OpenSSH, pass an 'openssh-configuration'
       ;; record as a second argument to 'service' below.
-      ;; (service openssh-service-type
-      ;;          (openssh-configuration
-      ;;            (x11-forwarding? #t)
-      ;;            (permit-root-login 'prohibit-password)))
+
 
       ;; (set-xorg-configuration (xorg-configuration (keyboard-layout (keyboard-layout "us"))))
 
@@ -258,22 +258,31 @@
                       user-processes-service-type
                       '(zfs-automount))
 
-      (modify-services (operating-system-user-services installation-os)
-        (guix-service-type
-         config => (guix-configuration
-                    (inherit config)
-                    (guix (guix-for-channels %channels))
-                    (authorized-keys
-                     (cons* %signing-key
-                            %default-authorized-guix-keys))
-                    (substitute-urls
-                     `(,@%default-substitute-urls
-                       "https://substitutes.nonguix.org"))
-                    (channels %channels))))))
+      (modify-services
+       (operating-system-user-services installation-os)
+       (guix-service-type
+        config => (guix-configuration
+                   (inherit config)
+                   (guix (guix-for-channels %channels))
+                   (authorized-keys
+                    (cons* %signing-key
+                           %default-authorized-guix-keys))
+                   (substitute-urls
+                    `(,@%default-substitute-urls
+                      "https://substitutes.nonguix.org"))
+                   (channels %channels)))
+       ;; (openssh-service-type
+       ;;  config =>
+       ;;  (service openssh-service-type
+       ;;           (openssh-configuration
+       ;;            (inherit config)
+       ;;            ;; (openssh openssh-sans-x)
+       ;;            (permit-root-login #t))))
+       )))
 
     ;; Add some extra packages useful for the installation process
     (packages
-     (append (list git curl stow vim emacs-no-x-toolkit tmux)
+     (append (list git curl stow vim emacs-no-x-toolkit tmux my-zfs)
              (operating-system-packages installation-os)))))
 
 installation-os-nonfree

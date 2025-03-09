@@ -5,3 +5,7 @@ test:
 resizetmpfs:
 	sudo mount -o remount,size=20G /tmp
 	sudo mount -o remount,size=10G /run/user/1000
+dd:
+	dd if=$(IF) of=$(OF) status=progress bs=4096
+	sync
+
