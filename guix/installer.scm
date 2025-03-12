@@ -221,13 +221,15 @@
     ;;
     ;; For broadcom, blacklist conflicting kernel modules.
     (kernel-arguments '("modprobe.blacklist=b43,b43legacy,ssb,bcm43xx,brcm80211,brcmfmac,brcmsmac,bcma,radeon" "net.ifnames=0"))
-    (kernel-loadable-modules (list broadcom-sta (list my-zfs "module")))
-    (firmware (cons* iwlwifi-firmware broadcom-bt-firmware linux-firmware %base-firmware))
+    ;(kernel-loadable-modules (list broadcom-sta (list my-zfs "module")))
+    (kernel-loadable-modules (list (list my-zfs "module")))
+    ;(firmware (cons* iwlwifi-firmware broadcom-bt-firmware linux-firmware %base-firmware))
+    (firmware (cons* iwlwifi-firmware %base-firmware))
 
     ;;; must be included for legacy mounts
     ;; (initrd %initrd)
     ;; The rest of the neccessary ZFS bits and bobs *are* included.
-    (initrd microcode-initrd)
+    ;(initrd microcode-initrd)
     (initrd-modules (cons "zfs" %base-initrd-modules))
 
     (services
